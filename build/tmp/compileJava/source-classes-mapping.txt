@@ -1,0 +1,2 @@
+com/mq/MQClient.java
+ com.mq.MQClient
