@@ -10,6 +10,9 @@ repositories {
 }
 
 dependencies {
+    implementation 'org.testng:testng:7.1.0'
+    implementation 'org.junit.jupiter:junit-jupiter:5.4.2'
+    implementation 'org.projectlombok:lombok:1.18.16'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
     implementation group: 'com.ibm.mq', name: 'com.ibm.mq.allclient', version: '9.2.0.1'
@@ -19,6 +22,24 @@ dependencies {
     testImplementation "org.testcontainers:testcontainers:1.15.3"
     testImplementation "org.testcontainers:junit-jupiter:1.15.3"
     implementation group: 'javax.jms', name: 'javax.jms-api', version: '2.0.1'
+    compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.20'
+    implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.14.1'
+    implementation group: 'org.apache.logging.log4j', name: 'log4j', version: '2.14.1', ext: 'pom'
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.7.2'
+    implementation group: 'io.github.ricall.junit5-wiremock', name: 'junit5-wiremock', version: '2.0.0'
+    testImplementation group: 'io.rest-assured', name: 'rest-assured', version: '4.3.3'
+    implementation group: 'com.google.guava', name: 'guava', version: '30.1.1-jre'
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.7.2'
+    testImplementation group: 'org.junit.platform', name: 'junit-platform-runner', version: '1.7.2'
+    testImplementation group: 'org.junit.platform', name: 'junit-platform-launcher', version: '1.7.2'
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.7.2'
+    testImplementation group: 'com.github.tomakehurst', name: 'wiremock', version: '2.27.2', ext: 'pom'
+    implementation group: 'com.typesafe', name: 'config', version: '1.4.1'
+    testImplementation 'io.rest-assured:rest-assured:4.4.0'
+    testImplementation 'io.rest-assured:json-path:4.4.0'
+    testImplementation 'io.rest-assured:json-schema-validator:4.4.0'
+    testImplementation 'io.rest-assured:spring-mock-mvc:4.4.0'
+
 }
 
 test {

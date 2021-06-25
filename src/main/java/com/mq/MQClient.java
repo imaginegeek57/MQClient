@@ -1,12 +1,20 @@
 package com.mq;
 
-import com.ibm.mq.jms.MQConnectionFactory;
-import javax.jms.*;
-
+import com.ibm.jms.JMSMessage;
+import com.ibm.jms.JMSTextMessage;
+import com.ibm.mq.jms.*;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import javax.jms.JMSException;
+import javax.jms.QueueSender;
+import javax.jms.Session;
+import java.util.UUID;
 
 public class MQClient {
+    private static final Logger log = LogManager.getLogger(MQClient.class);
 
-    private static MQConnectionFactory initFactory(MQConnectionFactory connectionFactory) throws JMSException {
+    public static MQQueueSession getSession() throws JMSException {
+        MQQueueConnectionFactory connectionFactory = new MQQueueConnectionFactory();
         // docker image: ibmcom/mq:9.1.1.0
         connectionFactory.setHostName("localhost");
         connectionFactory.setPort(1414);
@@ -14,71 +22,29 @@ public class MQClient {
         connectionFactory.setChannel("DEV.ADMIN.SVRCONN");
         connectionFactory.setTransportType(1);
 
-        return connectionFactory;
+        MQQueueConnection connection = (MQQueueConnection) connectionFactory.createQueueConnection("admin", "passw0rd");
+        connection.start();
+        return (MQQueueSession) connection.createQueueSession(false, Session.AUTO_ACKNOWLEDGE);
     }
 
-    private static Connection createConnection() {
-        MQConnectionFactory connectionFactory = new MQConnectionFactory();
-        Connection connection = null;
-        try {
-            connection = initFactory(connectionFactory).createConnection("admin", "passw0rd");
-        } catch (JMSException e) {
-            e.printStackTrace();
-        }
-        return connection;
+    public MQQueue createQueue(String queueName) throws JMSException {
+        return (MQQueue) getSession().createQueue(queueName);
     }
 
-
-    public static void send(String message) throws JMSException {
-        // Producer
-        try {
-            Session session = createConnection().createSession(false, Session.AUTO_ACKNOWLEDGE);
-            Queue queue = session.createQueue("DEV.QUEUE.1");
-            Message msg = session.createTextMessage(message);
-            MessageProducer producer = session.createProducer(queue);
-            System.out.println("Sending text: " + message);
-            producer.send(msg);
-//    }
-//
-//    public static void get() throws JMSException {
-//        // Consumer
-//        Session session = createConnection().createSession(false,
-//                Session.AUTO_ACKNOWLEDGE);
-//        Queue queue = session.createQueue("DEV.QUEUE.1");
-
-//        MessageConsumer consumer = session.createConsumer(queue);
-
-            QueueReceiver queueReceiver = (QueueReceiver) session.createConsumer(queue);
-
-
-            Message message2 = queueReceiver.receive();
-
-
-//        Message message2 = consumer.receive();
-//        String id = message2.getJMSMessageID();
-            System.out.println(message2);
-
-//        MessageConsumer consumer = session.createConsumer(queue);
-            System.out.println("check 1");
-//        consumer.receive().
-
-//        TextMessage textMsg = (TextMessage) consumer.receive();
-            System.out.println("check 2");
-
-//        System.out.println(textMsg);
-//        System.out.println("Received: " + textMsg.getText());
-//        session.close();
-        } finally {
-            if (createConnection() != null) {
-                createConnection().close();
-            }
-        }
+    public void send(String message, String queueName) throws JMSException {
+        JMSTextMessage msg = (JMSTextMessage) getSession().createTextMessage(message);
+        msg.setJMSCorrelationID(UUID.randomUUID().toString());
+        QueueSender producer = getSession().createSender(createQueue(queueName));
+        producer.send(msg);
+        log.info("Send message with producer:" + msg.toString());
     }
 
-    public static void main(String[] args) throws JMSException {
-        send("some test message");
-//        get();
+    public void getMessages(String queueName) throws JMSException {
+        MQQueueReceiver receiver = (MQQueueReceiver) getSession().createReceiver(createQueue(queueName));
+        JMSMessage receivedMessage = (JMSMessage) receiver.receive(1000);
+        System.out.println("Received message:" + receivedMessage);
+        getSession().close();
+        receiver.close();
     }
-
 
 }
