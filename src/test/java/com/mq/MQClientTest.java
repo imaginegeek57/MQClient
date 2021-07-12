@@ -4,13 +4,7 @@ import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import io.restassured.http.Cookies;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
-
 import javax.jms.JMSException;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -27,7 +21,7 @@ class MQClientTest {
 
 
     @Test
-    public void mqTest() throws JMSException, IOException {
+    public void sendMessageTest() throws JMSException {
         createQueueRestTest("test.queue");
 
         mqClient.send("some test msg 1", "test.queue");
@@ -36,11 +30,18 @@ class MQClientTest {
 
         mqClient.getMessages("test.queue");
         mqClient.getMessages("test.queue");
-
-        removeQueueRestTest("test.queue");
     }
 
     @Test
+    public void clearQueueTest() {
+        clearQueueRestTest("test.queue");
+    }
+
+    @Test
+    public void deleteQueueTest() {
+        deleteQueueRestTest("test.queue");
+    }
+
     public Cookies authRestTest() {
         Map<String, String> auth = new HashMap<>();
         auth.put("username", "admin");
@@ -59,7 +60,6 @@ class MQClientTest {
                 .getDetailedCookies();
     }
 
-    @Test
     public void checkRestTest() {
         given()
                 .relaxedHTTPSValidation()
@@ -71,7 +71,6 @@ class MQClientTest {
                 .statusCode(200);
     }
 
-    @Test
     public void createQueueRestTest(String queueName) {
         Map<String, String> headers = new HashMap<>();
         headers.put("ibm-mq-rest-csrf-token", "v");
@@ -90,8 +89,7 @@ class MQClientTest {
                 .statusCode(201);
     }
 
-    @Test
-    public void removeQueueRestTest(String queueName) {
+    public void deleteQueueRestTest(String queueName) {
         Map<String, String> headers = new HashMap<>();
         headers.put("ibm-mq-rest-csrf-token", "v");
 
@@ -103,5 +101,19 @@ class MQClientTest {
                 .delete("https://localhost:9443/ibmmq/rest/v1/admin/qmgr/QM1/queue/" + queueName + "?purge")
                 .then()
                 .statusCode(204);
+    }
+
+    public void clearQueueRestTest(String queueName) {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("ibm-mq-csrf-token", "v");
+
+        given()
+                .relaxedHTTPSValidation()
+                .cookie(String.valueOf(authRestTest()))
+                .headers(headers)
+                .when()
+                .delete("https://localhost:9443/ibmmq/console/internal/ibmmq/qmgr/QM1/queue/" + queueName + "/messages")
+                .then()
+                .statusCode(200);
     }
 }
