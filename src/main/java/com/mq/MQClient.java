@@ -1,10 +1,13 @@
 package com.mq;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ibm.jms.JMSMessage;
 import com.ibm.jms.JMSTextMessage;
 import com.ibm.mq.jms.*;
 import io.restassured.http.ContentType;
 import io.restassured.http.Cookies;
+import io.restassured.response.Response;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import javax.jms.JMSException;
@@ -19,14 +22,12 @@ import static io.restassured.RestAssured.given;
 public class MQClient {
     private static final Logger log = LogManager.getLogger(MQClient.class);
 
-
     public static MQQueueSession getSession() throws JMSException {
         MQQueueConnectionFactory connectionFactory = new MQQueueConnectionFactory();
-        // docker image: ibmcom/mq:9.1.1.0
         connectionFactory.setHostName("s-msk-v-mq01.raiffeisen.ru");
-        connectionFactory.setPort(1415);
-        connectionFactory.setQueueManager("QMDEV01");
-        connectionFactory.setChannel("QAS.DEV01");
+        connectionFactory.setPort(1420);
+        connectionFactory.setQueueManager("QMWEB01");
+        connectionFactory.setChannel("DEV.WEB01");
         connectionFactory.setTransportType(1);
 
         MQQueueConnection connection = (MQQueueConnection) connectionFactory.createQueueConnection();
@@ -54,7 +55,7 @@ public class MQClient {
         receiver.close();
     }
 
-    public Cookies authRestTest() {
+    public Cookies authRest() {
         Map<String, String> auth = new HashMap<>();
         auth.put("username", "");
         auth.put("password", "");
@@ -73,12 +74,16 @@ public class MQClient {
     }
 
     public void checkRestTest() {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("ibm-mq-rest-csrf-token", "v");
+
         given()
                 .relaxedHTTPSValidation()
                 .contentType(ContentType.JSON)
-                .cookie(String.valueOf(authRestTest()))
+                .cookie(String.valueOf(authRest()))
+                .headers(headers)
                 .when()
-                .get("https://s-msk-v-mq01.raiffeisen.ru:9443/ibmmq/rest/v1/ruamdva/qmgr/QMWEB01/queue")
+                .get("https://s-msk-v-mq01.raiffeisen.ru:9443/ibmmq/rest/v1/admin/qmgr/QMWEB01/queue")
                 .then()
                 .statusCode(200);
     }
@@ -92,11 +97,11 @@ public class MQClient {
         given()
                 .relaxedHTTPSValidation()
                 .contentType(ContentType.JSON)
-                .cookie(String.valueOf(authRestTest()))
+                .cookie(String.valueOf(authRest()))
                 .headers(headers)
                 .body(body)
                 .when()
-                .post("https://s-msk-v-mq01.raiffeisen.ru:9443/ibmmq/rest/v1/ruamdva/qmgr/QMDEV01/queue/")
+                .post("https://s-msk-v-mq01.raiffeisen.ru:9443/ibmmq/rest/v1/admin/qmgr/QMWEB01/queue")
                 .then()
                 .statusCode(201);
     }
@@ -107,25 +112,78 @@ public class MQClient {
 
         given()
                 .relaxedHTTPSValidation()
-                .cookie(String.valueOf(authRestTest()))
+                .contentType(ContentType.JSON)
+                .cookie(String.valueOf(authRest()))
                 .headers(headers)
                 .when()
-                .delete("https://s-msk-v-mq01.raiffeisen.ru:9443/ibmmq/rest/v1/ruamdva/QMDEV01/queue/" + queueName + "?purge")
+                .delete("https://s-msk-v-mq01.raiffeisen.ru:9443/ibmmq/rest/v1/admin/qmgr/QMWEB01/queue/" + queueName + "?purge")
                 .then()
                 .statusCode(204);
     }
 
-    public void clearQueueRestTest(String queueName) {
+    public void clearQueueRestTest(String queueName) throws JsonProcessingException {
         Map<String, String> headers = new HashMap<>();
-        headers.put("ibm-mq-csrf-token", "v");
+        headers.put("ibm-mq-rest-csrf-token", "v");
 
         given()
                 .relaxedHTTPSValidation()
-                .cookie(String.valueOf(authRestTest()))
+                .contentType(ContentType.JSON)
+                .cookie(String.valueOf(authRest()))
                 .headers(headers)
+                .body(convertMap(queueName))
                 .when()
-                .delete("https://localhost:9443/ibmmq/console/internal/ibmmq/qmgr/QM1/queue/" + queueName + "/messages")
+                .post("https://s-msk-v-mq01.raiffeisen.ru:9443/ibmmq/rest/v2/admin/action/qmgr/QMWEB01/mqsc")
                 .then()
                 .statusCode(200);
+    }
+
+    public void sendMessageRest(String queueName, String message) {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("ibm-mq-rest-csrf-token", "v");
+
+        given()
+                .relaxedHTTPSValidation()
+                .contentType(ContentType.JSON)
+                .cookie(String.valueOf(authRest()))
+                .headers(headers)
+                .body(message)
+                .when()
+                .post("https://s-msk-v-mq01.raiffeisen.ru:9443/ibmmq/rest/v1/messaging/qmgr/QMWEB01/queue/" + queueName + "/message")
+                .then()
+                .statusCode(201);
+
+        log.info("Send message: " + message);
+        System.out.println("Send message: " + message);
+    }
+
+    public void getMessageRest(String queueName) {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("ibm-mq-rest-csrf-token", "v");
+
+        Response response = given()
+                .relaxedHTTPSValidation()
+                .contentType(ContentType.JSON)
+                .cookie(String.valueOf(authRest()))
+                .headers(headers)
+                .when()
+                .delete("https://s-msk-v-mq01.raiffeisen.ru:9443/ibmmq/rest/v1/messaging/qmgr/QMWEB01/queue/" + queueName + "/message")
+                .then()
+                .statusCode(200)
+                .extract()
+                .response();
+
+        log.info("Received message: " + response.getBody().asString());
+        System.out.println("Received message: " + response.getBody().asString());
+    }
+
+    public String convertMap(String queueName) throws JsonProcessingException {
+        Map<String, Object> map = new HashMap<>();
+        Map<String, String> map2 = new HashMap<>();
+        map2.put("command", "CLEAR QLOCAL(" + queueName + ")");
+        map.put("type", "runCommand");
+        map.put("command", "string");
+        map.put("parameters", map2);
+
+        return new ObjectMapper().writeValueAsString(map);
     }
 }

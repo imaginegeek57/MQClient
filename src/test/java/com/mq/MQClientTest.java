@@ -1,14 +1,12 @@
 package com.mq;
 
-import io.restassured.RestAssured;
-import io.restassured.http.ContentType;
-import io.restassured.http.Cookies;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
 import javax.jms.JMSException;
-import java.util.HashMap;
-import java.util.Map;
-
-import static io.restassured.RestAssured.given;
 
 //@Testcontainers
 class MQClientTest {
@@ -19,21 +17,20 @@ class MQClientTest {
 
     private final MQClient mqClient = new MQClient();
 
-
     @Test
     public void sendMessageTest() throws JMSException {
-//        mqClient.createQueueRestTest("TEST.QUEUE.TF2");
+        mqClient.createQueueRestTest("TEST.QUEUE.TF1");
 
-        mqClient.send("some test msg 1", "TEST.QUEUE.TF");
-        mqClient.send("some test msg 2", "TEST.QUEUE.TF");
-        mqClient.send("some test msg 3", "TEST.QUEUE.TF");
-        mqClient.send("some test msg 4", "TEST.QUEUE.TF");
+//        mqClient.send("some test msg 1", "TEST.QUEUE.TF1");
+//        mqClient.send("some test msg 2", "TEST.QUEUE.TF1");
 
-        mqClient.getMessages("TEST.QUEUE.TF");
-        mqClient.getMessages("TEST.QUEUE.TF");
-//        mqClient.getMessages("TEST.QUEUE.TF");
-//        mqClient.getMessages("TEST.QUEUE.TF");
-//        mqClient.getMessages("TEST.QUEUE.TF");
+        mqClient.sendMessageRest("TEST.QUEUE.TF1", "some test msg 1");
+        mqClient.sendMessageRest("TEST.QUEUE.TF1", "some test msg 2");
+        mqClient.sendMessageRest("TEST.QUEUE.TF1", "some test msg 3");
+        mqClient.sendMessageRest("TEST.QUEUE.TF1", "some test msg 4");
+
+        mqClient.getMessageRest("TEST.QUEUE.TF1");
+        mqClient.getMessageRest("TEST.QUEUE.TF1");
     }
 
     @Test
@@ -42,13 +39,17 @@ class MQClientTest {
     }
 
     @Test
-    public void clearQueueTest() {
-        mqClient.clearQueueRestTest("test.queue");
+    public void createQueue() {
+        mqClient.createQueueRestTest("TEST.QUEUE.TF");
     }
 
     @Test
-    public void deleteQueueTest() {
-        mqClient.deleteQueueRestTest("TEST.QUEUE.TF");
+    public void clearQueueTest() throws JsonProcessingException {
+        mqClient.clearQueueRestTest("TEST.QUEUE.TF1");
     }
 
+    @Test
+    public void deleteQueue() {
+        mqClient.deleteQueueRestTest("TEST.QUEUE.TF1");
+    }
 }
